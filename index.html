@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 視覺分析與故事生成工坊</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f9f9f9;
+    }
+    .card {
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      background-color: #ffffff;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+      color: #24292e;
+    }
+    input[type="password"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    button {
+      background-color: #0366d6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:disabled {
+      background-color: #94d3a2;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background-color: #ea4a5a;
+      width: auto;
+      padding: 8px 16px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    .preview-container {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .preview-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .preview-img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    .delete-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: #24292e;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    pre {
+      background: #f6f8fa;
+      padding: 16px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 15px;
+    }
+    .status {
+      font-weight: bold;
+      color: #d73a49;
+      display: block;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 style="text-align: center; color: #24292e;">AI 視覺分析與創作工具</h1>
+
+  <!-- 設定區 -->
+  <div class="card">
+    <label for="apiKey">🔑 第一步：輸入你的 Gemini API Key</label>
+    <input type="password" id="apiKey" placeholder="請貼上你的 Gemini API Key (以 AIzaSy 開頭)">
+    <small style="color: #666;">※ Key 僅暫存於本機瀏覽器，不會外流。</small>
+  </div>
+
+  <!-- 功能操作區 -->
+  <div class="card">
+    <label>🎯 第二步：選擇你想做什麼？</label>
+    <select id="modeSelect">
+      <option value="prompt">【功能 A】單圖分析：產生畫面詳細描述與 AI 繪圖指令</option>
+      <option value="story">【功能 B】多圖串聯：自動生成短篇小說 / 故事</option>
+    </select>
+
+    <!-- 小說設定區 (切換至多圖串聯時顯示) -->
+    <div id="storyOptions" style="display: none; background-color: #f1f8ff; padding: 15px; border-radius: 5px; margin-bottom: 16px;">
+      <label for="storyStyle">📖 選擇小說風格：</label>
+      <select id="storyStyle">
+        <option value="冒險懸疑，情節引人入勝且具張力">冒險懸疑 (適合刺激劇情)</option>
+        <option value="溫馨療癒，著重情感與日常細節">溫馨療癒 (適合日常、風景)</option>
+        <option value="硬派寫實，重視邏輯推理與氛圍營造">硬派寫實 (適合推理、寫實場景)</option>
+        <option value="奇幻冒險，充滿想像力與架空元素">奇幻冒險 (適合天馬行空的想像)</option>
+      </select>
+      
+      <label for="storyContext" style="margin-top: 10px;">✍️ 補充文字敘述 (選填)：</label>
+      <textarea id="storyContext" rows="3" placeholder="例如：這幾台模型車在一個賽博龐克風格的未來城市中準備進行午夜飆車... (提供背景設定能讓 AI 寫得更符合你的想像)"></textarea>
+    </div>
+
+    <label>📸 第三步：準備你的照片</label>
+    <input type="file" id="imageInput" accept="image/*" multiple style="display: none;">
+    <button id="addImgBtn" class="btn-secondary">➕ 點此新增照片</button>
+
+    <div class="preview-container" id="previewContainer">
+      <!-- 縮圖會顯示在這裡 -->
+    </div>
+
+    <button id="submitBtn">🚀 開始分析生成</button>
+    <span id="statusText" class="status"></span>
+  </div>
+
+  <!-- 結果顯示區 -->
+  <div class="card">
+    <label>✨ 生成結果：</label>
+    <pre id="outputResult">等待上傳照片與指令...</pre>
+  </div>
+
+  <script>
+    const apiKeyInput = document.getElementById('apiKey');
+    const modeSelect = document.getElementById('modeSelect');
+    const storyOptions = document.getElementById('storyOptions');
+    const storyStyle = document.getElementById('storyStyle');
+    const storyContext = document.getElementById('storyContext');
+    const imageInput = document.getElementById('imageInput');
+    const addImgBtn = document.getElementById('addImgBtn');
+    const previewContainer = document.getElementById('previewContainer');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusText = document.getElementById('statusText');
+    const outputResult = document.getElementById('outputResult');
+
+    let selectedFiles = []; // 存放目前選擇的所有圖片
+
+    // 載入 API Key
+    apiKeyInput.value = localStorage.getItem('user_gemini_api_key') || '';
+    apiKeyInput.addEventListener('change', () => {
+      localStorage.setItem('user_gemini_api_key', apiKeyInput.value.trim());
+    });
+
+    // 切換模式顯示/隱藏設定區
+    modeSelect.addEventListener('change', () => {
+      if (modeSelect.value === 'story') {
+        storyOptions.style.display = 'block';
+      } else {
+        storyOptions.style.display = 'none';
+      }
+    });
+
+    // 點擊「新增照片」按鈕時，觸發隱藏的 input file
+    addImgBtn.addEventListener('click', () => {
+      imageInput.click();
+    });
+
+    // 處理檔案選擇與縮圖更新
+    imageInput.addEventListener('change', (e) => {
+      const newFiles = Array.from(e.target.files);
+      selectedFiles = selectedFiles.concat(newFiles);
+      updatePreview();
+      imageInput.value = ''; // 清空 input 讓下次選同檔名也能觸發
+    });
+
+    function updatePreview() {
+      previewContainer.innerHTML = '';
+      selectedFiles.forEach((file, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'preview-wrapper';
+
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.className = 'preview-img';
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-btn';
+        delBtn.innerText = 'X';
+        delBtn.title = '移除此照片';
+        delBtn.onclick = () => {
+          selectedFiles.splice(index, 1);
+          updatePreview(); // 重新渲染縮圖
+        };
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(delBtn);
+        previewContainer.appendChild(wrapper);
+      });
+    }
+
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = (error) => reject(error);
+    });
+
+    // 送出請求
+    submitBtn.addEventListener('click', async () => {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        alert('請先輸入有效的 Gemini API Key');
+        return;
+      }
+      if (selectedFiles.length === 0) {
+        alert('請至少新增一張照片');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusText.innerText = 'AI 運算中，這可能需要幾秒鐘，請稍候...';
+      outputResult.innerText = '生成中...';
+
+      try {
+        const imageParts = await Promise.all(
+          selectedFiles.map(async (file) => ({
+            inline_data: {
+              mime_type: file.type,
+              data: await fileToBase64(file)
+            }
+          }))
+        );
+
+        let partsArray = [];
+        
+        // 依模式建立系統提示詞與內容陣列
+        if (modeSelect.value === 'prompt') {
+          const systemPrompt = `請詳細分析這張圖片的構圖、光影、材質、藝術風格與主體細節。
+產出格式：
+1. 【畫面深度解析】：以流暢的中文描述畫面所有關鍵元素。
+2. 【AI 繪圖指令 (Prompt)】：請提供一組可直接用於 Midjourney / Stable Diffusion 的英文高質量提示詞。`;
+          partsArray.push({ text: systemPrompt });
+        } else {
+          const style = storyStyle.value;
+          const context = storyContext.value.trim();
+          let systemPrompt = `你是一位專業小說家。請觀察使用者依序提供的這 ${selectedFiles.length} 張照片。
+要求：
+1. 請以「${style}」的風格，將照片中的場景、角色或物品串聯成一篇具有起承轉合的短篇故事 / 小說。
+2. 情節推進需自然對應上傳圖片的順序。
+3. 故事字數約 800 至 1200 字，段落分明。`;
+          partsArray.push({ text: systemPrompt });
+          
+          if (context !== '') {
+            partsArray.push({ text: `【使用者指定的背景與情節敘述】：${context}` });
+          }
+        }
+
+        // 將圖片加入內容陣列
+        partsArray = partsArray.concat(imageParts);
+
+        const requestBody = {
+          contents: [{ parts: partsArray }],
+          // 這裡將安全審核全部設為 BLOCK_NONE，解除限制
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+          ]
+        };
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'API 請求失敗');
+        }
+
+        const candidate = data.candidates?.[0];
+        if (candidate?.finishReason === 'SAFETY') {
+          outputResult.innerText = '生成中斷：內容觸發了不可避免的底線安全防護。';
+        } else {
+          const resultText = candidate?.content?.parts?.[0]?.text || '無回傳內容';
+          outputResult.innerText = resultText;
+        }
+
+      } catch (err) {
+        outputResult.innerText = `發生錯誤：${err.message}`;
+      } finally {
+        submitBtn.disabled = false;
+        statusText.innerText = '';
+      }
+    });
+  </script>
+</body>
+</html>
